@@ -70,7 +70,7 @@ const SignupForm = () => {
     if (validateForm()) {
       setLoading(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/signup`, {
+        const response = await fetch(`https://pitutor.onrender.com/api/auth/signup`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
