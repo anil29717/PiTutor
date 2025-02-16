@@ -13,7 +13,15 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors({ credentials: true, origin: process.env.VITE_FRONTEND_URL })); // Update with frontend URL
+app.use(
+  cors({
+    origin: "https://pitutor-ehfj.onrender.com", // ✅ Use the correct frontend URL
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"], // ✅ Allow required methods
+    allowedHeaders: ["Content-Type", "Authorization"], // ✅ Allow necessary headers
+  })
+);
+
 app.use(cookieParser());
 
 // Routes
