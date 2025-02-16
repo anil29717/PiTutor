@@ -26,7 +26,7 @@ const Login = () => {
 
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/auth/login`,
+        `https://pitutor.onrender.com/api/auth/login`,
         user,
         { withCredentials: true }
       );
