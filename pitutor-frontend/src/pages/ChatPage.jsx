@@ -36,7 +36,7 @@ const ChatPage = () => {
     setLoadingMessages(true);
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/chat/${userId}/messages`,
+        `https://pitutor.onrender.com/api/chat/${userId}/messages`,
         { withCredentials: true }
       );
       setChatId(res.data.userId);
@@ -58,7 +58,7 @@ const ChatPage = () => {
 
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/chat/${userId}/message`,
+        `https://pitutor.onrender.com/api/chat/${userId}/message`,
         { content: input },
         { withCredentials: true }
       );
