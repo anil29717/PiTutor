@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import crypto from "crypto";
+import Activity from "../models/Activity.js";
 
 const router = express.Router();
 
@@ -29,6 +30,13 @@ router.post("/signup", async (req, res) => {
 
     await newUser.save();
     console.log("User saved:", newUser); // Debugging
+
+    // Log signup activity
+    try {
+      await Activity.create({ userId: newUser.userId, type: "signup", detail: `User ${newUser.email} signed up` });
+    } catch (actErr) {
+      console.error("Activity log error (signup):", actErr);
+    }
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
@@ -58,7 +66,14 @@ router.post("/login", async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // Cookie expiry (7 days in milliseconds)
       sameSite: "Strict", // Prevent cross-site request forgery
       path: "/"
-    }).json({
+    });
+
+    // Log login activity
+    Activity.create({ userId: user.userId, type: "login", detail: `User ${user.email} logged in` })
+      .catch((actErr) => console.error("Activity log error (login):", actErr));
+
+    // send response payload
+    res.json({
       message: "Login successful",
       token: token,
       user: {
@@ -77,6 +92,13 @@ router.post("/login", async (req, res) => {
 
 // Logout
 router.post("/logout", (req, res) => {
+  try {
+    // Attempt to get userId from a provided header or ignore if not available
+    const userStr = (req.headers["x-user-id"] || "").toString();
+    if (userStr) {
+      Activity.create({ userId: userStr, type: "logout", detail: `User logged out` }).catch(() => {});
+    }
+  } catch {}
   res.clearCookie("token").json({ message: "Logged out successfully" });
 });
 

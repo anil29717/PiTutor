@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Mail, Lock, Loader2, AlertCircle } from "lucide-react";
 
 const Login = () => {
-  const [user, setUser] = useState({ email: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [entered, setEntered] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -19,31 +21,43 @@ const Login = () => {
     }
   }, [navigate]);
 
+  // Trigger entrance animation
+  useEffect(() => {
+    const t = setTimeout(() => setEntered(true), 0);
+    return () => clearTimeout(t);
+  }, []);
+
   const handleLogin = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
-
+    setLoading(true);
     try {
       const res = await axios.post(
-        `https://pitutor.onrender.com/api/auth/login`,
-        user,
+        "http://localhost:5000/api/auth/login",
+        { email, password },
         { withCredentials: true }
       );
-
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      localStorage.setItem("token", res.data.token);
-
-      const userId = res.data.user.userId;
-      if (!userId) {
-        throw new Error("User ID not found");
+      const { token, user } = res.data;
+      
+      // Clear all existing session data
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('chatSessions_') || key.startsWith('currentSession_'))) {
+          keysToRemove.push(key);
+        }
       }
-
-      navigate(`/chat/${encodeURIComponent(userId)}`);
-    } catch (error) {
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Set new login data
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      
+      // Navigate to chat
+      navigate(`/chat/${encodeURIComponent(user.userId)}`);
+    } catch (err) {
       setError(
-        error.response?.data?.message || 
-        "An error occurred during login. Please try again."
+        err?.response?.data?.message || "Login failed. Please check your credentials."
       );
     } finally {
       setLoading(false);
@@ -51,121 +65,72 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo/Brand Section */}
-        <div className="text-center mb-8">
-          <h1 
-            onClick={() => navigate("/")} 
-            className="text-3xl font-bold text-blue-600 cursor-pointer hover:text-blue-700"
-          >
-            PiTutor
-          </h1>
-          <p className="text-gray-600 mt-2">Sign in to continue learning</p>
-        </div>
-
-        {/* Login Card */}
-        <div className="bg-white rounded-xl shadow-xl p-8">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6">Welcome back</h2>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4">
+      <div className="relative w-full max-w-md">
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-blue-200/40 rounded-full blur-2xl"></div>
+        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-purple-200/40 rounded-full blur-2xl"></div>
+        {/* Back to Home button (fixed page top-right) */}
+        <button
+          type="button"
+          aria-label="Back to Home"
+          className="fixed top-4 right-4 z-30 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-blue-300/60 text-blue-700 shadow transition-all duration-200 hover:bg-blue-50/40 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onClick={() => { setLeaving(true); setTimeout(() => navigate('/'), 300); }}
+        >
+          Back to Home
+        </button>
+        <div className={`relative w-full bg-white/30 backdrop-blur-md rounded-2xl shadow-lg border border-white/40 p-6 transition-all duration-500 ease-out hover:bg-white/40 hover:shadow-xl ${entered && !leaving ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Login</h1>
+          <p className="text-sm text-gray-700 mb-6">
+            Welcome back. Please sign in to continue.
+          </p>
 
           {error && (
-            <div className="mb-6 flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
-              <AlertCircle className="w-5 h-5" />
-              <p className="text-sm">{error}</p>
+            <div className="mb-4 p-3 rounded-lg bg-red-100/70 text-red-700 text-sm border border-red-200/60">
+              {error}
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-1">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg 
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition-colors duration-200"
-                  placeholder="Enter your email"
-                  onChange={(e) => setUser({ ...user, email: e.target.value })}
-                />
-              </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full rounded-xl border border-gray-300 bg-white/30 px-4 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="you@example.com"
+              />
             </div>
-
-            <div className="space-y-1">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg 
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition-colors duration-200"
-                  placeholder="Enter your password"
-                  onChange={(e) => setUser({ ...user, password: e.target.value })}
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full rounded-xl border border-gray-300 bg-white/30 px-4 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                placeholder="••••••••"
+              />
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                  Remember me
-                </label>
-              </div>
-              <a 
-                href="#" 
-                className="text-sm font-medium text-blue-600 hover:text-blue-500"
-              >
-                Forgot password?
-              </a>
-            </div>
-
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center py-3 px-4 border border-transparent 
-                       rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 
-                       focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-                       disabled:opacity-50 disabled:cursor-not-allowed
-                       transition-colors duration-200"
+              className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-xl text-white bg-blue-600/90 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all shadow"
             >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                "Sign in"
-              )}
+              {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
-        </div>
 
-        {/* Sign Up Link */}
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
-            Don't have an account?{" "}
+          <div className="mt-4 text-sm text-gray-700">
+            Don’t have an account?{' '}
             <button
-              onClick={() => navigate("/signup")}
-              className="font-semibold text-blue-600 hover:text-blue-500"
+              onClick={() => { setLeaving(true); setTimeout(() => navigate('/signup'), 180); }}
+              className="text-blue-700 hover:text-blue-800 font-medium transition-all duration-200 active:scale-95 hover:underline"
             >
-              Sign up for free
+              Sign up
             </button>
-          </p>
+          </div>
         </div>
       </div>
     </div>

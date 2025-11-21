@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: "https://pitutor-ehfj.onrender.com", // ✅ Use the correct frontend URL
+    origin: "http://localhost:5173", // ✅ Use the correct frontend URL
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"], // ✅ Allow required methods
     allowedHeaders: ["Content-Type", "Authorization"], // ✅ Allow necessary headers
@@ -27,6 +28,7 @@ app.use(cookieParser());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Connect to MongoDB
 mongoose

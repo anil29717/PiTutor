@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import SignupForm from "./pages/Signup"
 import Login from "./pages/Login";
 import ChatPage from "./pages/ChatPage";
+import Admin from "./pages/Admin";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/signup" element={<SignupForm />} />
         <Route path="/login" element={<Login />} />
         <Route path="/chat/:userId" element={<ChatPage />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </Router>
   );
