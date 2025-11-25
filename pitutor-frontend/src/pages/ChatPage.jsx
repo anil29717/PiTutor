@@ -3,6 +3,43 @@ import { useNavigate, useParams } from "react-router-dom";
 import { LogOut, Send, Loader2, Trash2, Plus, MessageSquare, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+const normalizeMarkdown = (text) => {
+  if (!text) return "";
+  const lines = String(text).split(/\r?\n/);
+  const out = [];
+  let inCode = false;
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const s = raw.trim();
+    if (s.startsWith("```") || s.startsWith("~~~")) {
+      out.push(raw);
+      inCode = !inCode;
+      continue;
+    }
+    if (inCode) {
+      out.push(raw);
+      continue;
+    }
+    if (/^[•-]$/.test(s)) {
+      const next = lines[i + 1] ? lines[i + 1].trim() : "";
+      if (next) {
+        out.push(`- ${next}`);
+        i++;
+      }
+      continue;
+    }
+    if (/^•\s+/.test(s)) {
+      out.push(`- ${s.replace(/^•\s+/, "")}`);
+      continue;
+    }
+    out.push(raw);
+  }
+  const joined = out.join("\n").replace(/\n{3,}/g, "\n\n");
+  return joined;
+};
 
 // User Avatar Component - shows first letter of user's name
 const UserAvatar = ({ userName }) => {
@@ -33,7 +70,6 @@ const ChatPage = () => {
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [chatId, setChatId] = useState(null);
   const messagesEndRef = useRef(null);
 
   // LocalStorage management for sessions
@@ -126,7 +162,6 @@ const ChatPage = () => {
         { withCredentials: true }
       );
       // API returns an array of messages; parse accordingly
-      setChatId(userId);
       const data = res.data;
       const fetched = Array.isArray(data) ? data : (data.messages || []);
       setMessages(fetched);
@@ -457,11 +492,41 @@ const ChatPage = () => {
                           ? "bg-gradient-to-br from-blue-500 to-violet-500 text-white rounded-tr-sm"
                           : "bg-white/80 border border-violet-100/50 text-slate-700 rounded-tl-sm"
                       }`}>
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                        <div className="prose prose-sm max-w-none text-sm leading-relaxed whitespace-pre-wrap">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ node, ...props }) => <p className="m-0" {...props} />,
+                              strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+                              em: ({ node, ...props }) => <em className="italic" {...props} />,
+                              ul: ({ node, ...props }) => <ul className="list-disc pl-5 mt-2 mb-2" {...props} />,
+                              ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mt-2 mb-2" {...props} />,
+                              li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                              code: ({ node, inline, className, children, ...props }) => {
+                                return inline ? (
+                                  <code className="bg-slate-100 text-slate-800 px-1 py-0.5 rounded text-xs" {...props}>
+                                    {children}
+                                  </code>
+                                ) : (
+                                  <pre className="bg-slate-900 text-slate-100 rounded p-3 overflow-auto text-xs" {...props}>
+                                    <code className={className}>{children}</code>
+                                  </pre>
+                                );
+                              },
+                            }}
+                          >
+                            {normalizeMarkdown(msg.content)}
+                          </ReactMarkdown>
+                        </div>
                       </div>
                     </div>
                   </div>
-                ))}
+              ))}
+                {loadingMessages && (
+                  <div className="flex justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+                  </div>
+                )}
                 {loading && (
                   <div className="flex justify-start animate-fadeIn">
                     <div className="flex gap-3">

@@ -6,7 +6,7 @@ function Admin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [authed, setAuthed] = useState(false);
-  const [tab, setTab] = useState("users");
+  const [tab, setTab] = useState("dashboard");
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [users, setUsers] = useState([]);
   const [chats, setChats] = useState([]);
@@ -37,7 +37,7 @@ function Admin() {
       setActivities(activityData);
       setAuthed(true);
       setLastUpdated(new Date());
-    } catch (e) {
+    } catch {
       setError("Failed to load admin data");
     } finally {
       setIsFetching(false);
@@ -81,7 +81,7 @@ function Admin() {
       } else {
         await fetchProtectedData();
       }
-    } catch (err) {
+    } catch {
       setError("Login failed");
     } finally {
       setLoading(false);
@@ -94,6 +94,47 @@ function Admin() {
     setUsers([]);
     setChats([]);
   };
+
+  const dayKey = (d) => {
+    const dt = new Date(d);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  };
+  const lastNDaysKeys = (n) => {
+    const arr = [];
+    const now = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      arr.push(dayKey(d));
+    }
+    return arr;
+  };
+  const messagesPerDay = (() => {
+    const all = chats.flatMap((c) => {
+      if (Array.isArray(c.sessions) && c.sessions.length) {
+        return c.sessions.flatMap((s) => s.messages || []);
+      }
+      return c.messages || [];
+    });
+    const map = new Map();
+    all.forEach((m) => {
+      const k = m?.timestamp ? dayKey(m.timestamp) : dayKey(Date.now());
+      map.set(k, (map.get(k) || 0) + 1);
+    });
+    const keys = lastNDaysKeys(14);
+    return keys.map((k) => ({ k, v: map.get(k) || 0 }));
+  })();
+  const activitiesPerDay = (() => {
+    const map = new Map();
+    activities.forEach((a) => {
+      const k = a?.timestamp ? dayKey(a.timestamp) : dayKey(Date.now());
+      map.set(k, (map.get(k) || 0) + 1);
+    });
+    const keys = lastNDaysKeys(14);
+    return keys.map((k) => ({ k, v: map.get(k) || 0 }));
+  })();
+
+  
 
   // Calculate stats
   const totalUsers = users.length;
@@ -233,7 +274,7 @@ function Admin() {
 
         {/* Tabs */}
         <div className="mb-6 flex items-center gap-3 flex-wrap">
-          {['users', 'chats', 'history', 'activity'].map((tabName) => (
+          {["dashboard", 'users', 'chats', 'history', 'activity'].map((tabName) => (
             <button
               key={tabName}
               onClick={() => setTab(tabName)}
@@ -261,6 +302,59 @@ function Admin() {
             )}
           </div>
         </div>
+
+        {tab === "dashboard" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="p-6 rounded-2xl bg-white/60 backdrop-blur-xl border border-blue-300/40 shadow-md">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-semibold text-gray-800">Messages (14 days)</h3>
+                <span className="text-sm text-gray-500">Total {messagesPerDay.reduce((s, d) => s + d.v, 0)}</span>
+              </div>
+              {(() => {
+                const w = 560;
+                const h = 140;
+                const max = Math.max(1, ...messagesPerDay.map((d) => d.v));
+                const step = w / Math.max(1, messagesPerDay.length - 1);
+                const pts = messagesPerDay
+                  .map((d, i) => {
+                    const x = i * step;
+                    const y = h - (d.v / max) * (h - 12);
+                    return `${x},${y}`;
+                  })
+                  .join(" ");
+                return (
+                  <svg width={w} height={h} className="overflow-visible">
+                    <polyline points={pts} fill="none" stroke="#6366f1" strokeWidth="2" />
+                  </svg>
+                );
+              })()}
+              <div className="mt-2 text-xs text-gray-500">Last 14 days</div>
+            </div>
+            <div className="p-6 rounded-2xl bg-white/60 backdrop-blur-xl border border-blue-300/40 shadow-md">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-semibold text-gray-800">Activity (14 days)</h3>
+                <span className="text-sm text-gray-500">Total {activitiesPerDay.reduce((s, d) => s + d.v, 0)}</span>
+              </div>
+              {(() => {
+                const w = 560;
+                const h = 140;
+                const max = Math.max(1, ...activitiesPerDay.map((d) => d.v));
+                const bw = Math.floor(w / activitiesPerDay.length);
+                return (
+                  <svg width={w} height={h} className="overflow-visible">
+                    {activitiesPerDay.map((d, i) => {
+                      const barH = (d.v / max) * (h - 12);
+                      const x = i * bw + 4;
+                      const y = h - barH;
+                      return <rect key={i} x={x} y={y} width={bw - 8} height={barH} rx={4} fill="#22c55e" />;
+                    })}
+                  </svg>
+                );
+              })()}
+              <div className="mt-2 text-xs text-gray-500">Last 14 days</div>
+            </div>
+          </div>
+        )}
 
         {tab === "users" && (
           <>

@@ -50,10 +50,12 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-
+     console.log("Login attempt for email:", email); // Debugging
     if (!user) return res.status(400).json({ message: "Invalid email or password" });
-
+  
+    console.log("User found:", user); // Debugging
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log("Password match:", isMatch); // Debugging
     if (!isMatch) return res.status(400).json({ message: "Invalid email or password" });
 
     // Generate JWT token
